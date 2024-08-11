@@ -21,39 +21,34 @@ Relay relay(RELAY_PIN);
 LCD lcd(LCD_ADDRESS, LCD_COLUMNS, LCD_ROWS);
 UART uart(RX_PIN, TX_PIN);
 
-const unsigned long DEBOUNCE_DELAY = 50;        // 50ms debounce delay
-const unsigned long TIME_WATERING = 10 * 60000; // Thời gian tưới (10 phút)
-const int MOISTURE_THRESHOLD = 600;             // Threshold
-
+const unsigned long debounceDelay = 50;        // 50ms debounce delay
+const unsigned long timeWatering = 10 * 60000; // Thời gian tưới (10 phút)
+const int moistureThreshold = 600;              //Threshold
+volatile bool buttonPressed = false;
 unsigned long lastDebounceTime = 0;
 unsigned long timeBeginWatering = 0;
-bool lastButtonState = HIGH;
-bool isWatering = false;
+bool lastButtonState = HIGH; 
+bool isWatering = false;    
 int dataShow = 0;
 JsonDocument doc;
 
 void handleButtonPress();
 void startWatering();
 void stopWatering();
-void updateLCD(float temperature, float humidity, int soilMoisture);
-void sendJSONData(float temperature, float humidity, int soilMoisture, bool relayStatus);
 
-void setup()
-{
-    Serial.begin(9600);
-    uart.begin(9600);
-    sensor.begin();
-    relay.begin();
-    lcd.setup();
+void setup() {
+  Serial.begin(9600);
+  uart.begin(9600);
+  sensor.begin();
+  relay.begin();
+  lcd.setup();
 
-    pinMode(BUTTON_PIN, INPUT_PULLUP);
-    attachInterrupt(digitalPinToInterrupt(BUTTON_PIN), handleButtonPress, CHANGE);
+  pinMode(BUTTON_PIN, INPUT_PULLUP);
+  attachInterrupt(digitalPinToInterrupt(BUTTON_PIN), handleButtonPress, CHANGE);
 }
 
-void loop()
-{
-    // Xử lý nhận dữ liệu từ UART
-    String signal;
+void loop() {
+  String signal;
     if (uart.receive(signal))
     {
         int control = signal.toInt();
@@ -62,21 +57,18 @@ void loop()
         isWatering = control;
     }
 
-    // Dừng tưới nếu thời gian tưới đã hết
-    if (isWatering && (millis() - timeBeginWatering >= TIME_WATERING))
+    if (isWatering && (millis() - timeBeginWatering >= timeWatering))
     {
         stopWatering();
         return;
     }
 
-    // Đọc dữ liệu từ cảm biến
     sensor.readSensors();
     float temperature = sensor.getTemperature();
     float humidity = sensor.getHumidity();
     int soilMoisture = sensor.getSoilMoisture();
     dataShow = map(soilMoisture, 0, 1024, 0, 100);
 
-    // Cập nhật LCD và gửi dữ liệu qua UART
     if (isnan(temperature) || isnan(humidity))
     {
         lcd.displayData("DHT11 Error");
@@ -84,12 +76,19 @@ void loop()
     }
     else
     {
-        updateLCD(temperature, humidity, dataShow);
-        sendJSONData(temperature, humidity, dataShow, relay.getState());
+        lcd.displayData(temperature, humidity, dataShow);
+
+        doc["temperature"] = temperature;
+        doc["humidity"] = humidity;
+        doc["soil_moisture"] = dataShow;
+        doc["relay_status"] = relay.getState();
+
+        char json[128];
+        serializeJson(doc, json);
+        uart.send(json);
     }
 
-    // Kiểm tra độ ẩm đất và bắt đầu tưới nếu cần
-    if (soilMoisture > MOISTURE_THRESHOLD && !isWatering)
+    if (soilMoisture > moistureThreshold && !isWatering)
     {
         startWatering();
     }
@@ -97,12 +96,13 @@ void loop()
     delay(1000);
 }
 
+
 void handleButtonPress()
 {
     unsigned long currentTime = millis();
-    bool buttonState = digitalRead(BUTTON_PIN);
+    bool buttonState = digitalRead(BUTTON_PIN); //Read status of button
 
-    if (buttonState != lastButtonState && (currentTime - lastDebounceTime) > DEBOUNCE_DELAY)
+    if (buttonState != lastButtonState && (currentTime - lastDebounceTime) > debounceDelay)
     {
         lastDebounceTime = currentTime;
 
@@ -110,7 +110,6 @@ void handleButtonPress()
         {
             relay.toggle();
             isWatering = relay.getState();
-            sendJSONData(0, 0, 0, relay.getState()); // Cập nhật trạng thái relay
         }
     }
 
@@ -130,22 +129,4 @@ void stopWatering()
     relay.setState(false);
     isWatering = false;
     Serial.println("Watering completed.");
-}
-
-void updateLCD(float temperature, float humidity, int soilMoisture)
-{
-    lcd.displayData(temperature, humidity, soilMoisture);
-}
-
-void sendJSONData(float temperature, float humidity, int soilMoisture, bool relayStatus)
-{
-    doc.clear();
-    doc["temperature"] = temperature;
-    doc["humidity"] = humidity;
-    doc["soil_moisture"] = soilMoisture;
-    doc["relay_status"] = relayStatus;
-
-    char json[128];
-    serializeJson(doc, json);
-    uart.send(json);
 }
