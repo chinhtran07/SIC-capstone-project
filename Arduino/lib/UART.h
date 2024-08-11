@@ -1,5 +1,5 @@
-#ifndef UART_MODULE_H
-#define UART_MODULE_H
+#ifndef UART_H
+#define UART_H
 
 #include <SoftwareSerial.h>
 

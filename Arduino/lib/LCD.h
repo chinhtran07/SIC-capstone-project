@@ -6,7 +6,7 @@
 class LCD
 {
 private:
-    LiquidCrystal_I2C lcd;
+    LiquidCrystal_I2C* lcd;
 
 public:
     LCD(uint8_t address, uint8_t columns, uint8_t rows);
