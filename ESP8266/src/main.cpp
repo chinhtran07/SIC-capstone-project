@@ -38,7 +38,6 @@ void reconnect();
 void messageReceived(char *topic, byte *payload, unsigned int length);
 void publishMessage(const char *topic, String payload, boolean retained);
 bool readDataFromUART();
-void checkTimers();
 
 void setup()
 {
@@ -239,63 +238,4 @@ bool readDataFromUART()
     }
   }
   return false;
-}
-
-void checkTimers()
-{
-  currentMillis = timeClient.getEpochTime(); // Thời gian hiện tại tính bằng giây
-  bool needWatering = false;
-
-  if (currentMillis >= timer1 && !isWatering)
-  {
-    needWatering = true;
-    timer1 = currentMillis + 86400; // Cập nhật cho ngày tiếp theo
-    EEPROM.put(TIMER1_ADDRESS, timer1);
-    EEPROM.commit();
-  }
-  if (currentMillis >= timer2 && !isWatering)
-  {
-    needWatering = true;
-    timer2 = currentMillis + 86400; // Cập nhật cho ngày tiếp theo
-    EEPROM.put(TIMER2_ADDRESS, timer2);
-    EEPROM.commit();
-  }
-  if (currentMillis >= timer3 && !isWatering)
-  {
-    needWatering = true;
-    timer3 = currentMillis + 86400; // Cập nhật cho ngày tiếp theo
-    EEPROM.put(TIMER3_ADDRESS, timer3);
-    EEPROM.commit();
-  }
-
-  if (needWatering && !isWatering)
-  {
-    serial.println(1);
-    controlStatus = true;
-    previousStatus = true; // Gửi lệnh bật relay tới Arduino
-    isWatering = true;
-    Serial.println("Watering started");
-
-    // Cập nhật trạng thái relay qua MQTT
-    JsonDocument doc;
-    doc["relay_status"] = controlStatus;
-    String payload;
-    serializeJson(doc, payload);
-    publishMessage(TOPIC_CONTROL, payload, true);
-  }
-  else if (!needWatering && isWatering)
-  {
-    serial.println(0);
-    controlStatus = false;
-    previousStatus = false; // Gửi lệnh tắt relay tới Arduino
-    isWatering = false;
-    Serial.println("Watering stopped");
-
-    // Cập nhật trạng thái relay qua MQTT
-    JsonDocument doc;
-    doc["relay_status"] = controlStatus;
-    String payload;
-    serializeJson(doc, payload);
-    publishMessage(TOPIC_CONTROL, payload, true);
-  }
 }
