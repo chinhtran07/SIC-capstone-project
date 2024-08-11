@@ -18,7 +18,7 @@ void LCD::displayData(float temperature, float humidity, int soilMoisture)
     lcd->print("T:");
     lcd->print(temperature);
     lcd->print("C ");
-    lcd->print("Soil: ");
+    lcd->print("S: ");
     lcd->print(soilMoisture);
     lcd->print("%");
     lcd->setCursor(0, 1);
