@@ -12,7 +12,7 @@
 #define TOPIC_CONTROL "garden/plant/control"
 #define TOPIC_USER_CONTROL "garden/user/control"
 #define TOPIC_METRICS "garden/plant/metrics"
-#define TOPIC_TIMERS "garden/plant/timers"
+#define TOPIC_LIMIT "garden/plant/limit"
 
 SoftwareSerial serial(D1, D2);
 float humidity = 0.0, temperature = 0.0;
@@ -61,23 +61,26 @@ void loop()
   if (readDataFromUART())
   {
     JsonDocument doc;
-    doc["humidity"] = humidity;
-    doc["temperature"] = temperature;
-    doc["soilMoisture"] = soilMoisture;
-
     String payload;
-    serializeJson(doc, payload);
-    publishMessage(TOPIC_METRICS, payload, true);
+    if (soilMoisture != 0)
+    {
+      doc["humidity"] = humidity;
+      doc["temperature"] = temperature;
+      doc["soilMoisture"] = soilMoisture;
 
-     if (controlStatus != previousStatus)
-      {
-        doc.clear();
-        previousStatus = controlStatus;
-        doc["relayStatus"] = controlStatus;
-        serializeJson(doc, payload);
-        publishMessage(TOPIC_CONTROL, payload, true);
-        Serial.println(controlStatus ? "RELAY ON" : "RELAY OFF");
-      }
+      serializeJson(doc, payload);
+      publishMessage(TOPIC_METRICS, payload, true);
+    }
+
+    if (controlStatus != previousStatus)
+    {
+      doc.clear();
+      previousStatus = controlStatus;
+      doc["relayStatus"] = controlStatus;
+      serializeJson(doc, payload);
+      publishMessage(TOPIC_CONTROL, payload, true);
+      Serial.println(controlStatus ? "RELAY ON" : "RELAY OFF");
+    }
   }
 }
 
@@ -103,7 +106,7 @@ void reconnect()
     {
       Serial.println("connected");
       client.subscribe(TOPIC_USER_CONTROL);
-      client.subscribe(TOPIC_TIMERS);
+      client.subscribe(TOPIC_LIMIT);
     }
     else
     {
@@ -128,10 +131,18 @@ void messageReceived(char *topic, byte *payload, unsigned int length)
 
   if (strcmp(topic, TOPIC_USER_CONTROL) == 0)
   {
+    String controlData;
     controlStatus = doc["relayStatus"];
+    serializeJson(doc, controlData);
     serial.println(controlStatus);
     previousStatus = controlStatus;
     Serial.println(controlStatus ? "RELAY ON" : "RELAY OFF");
+  }
+
+  if (strcmp(topic, TOPIC_LIMIT) == 0) {
+    String limitData;
+    serializeJson(doc, limitData);
+    serial.println(limitData);
   }
 }
 
@@ -155,7 +166,7 @@ bool readDataFromUART()
       humidity = doc["humidity"];
       temperature = doc["temperature"];
       soilMoisture = doc["soil_moisture"];
-      controlStatus = doc["relay_status"];     
+      controlStatus = doc["relay_status"];
 
       return true;
     }

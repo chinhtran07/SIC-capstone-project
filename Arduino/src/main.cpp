@@ -4,6 +4,7 @@
 #include <LCD.h>
 #include <UART.h>
 #include <ArduinoJson.h>
+#include <Ticker.h>
 
 #define DHT_PIN 8
 #define DHT_TYPE DHT11
@@ -15,6 +16,7 @@
 #define LCD_ADDRESS 0x27
 #define LCD_COLUMNS 16
 #define LCD_ROWS 2
+#define MAX_TIMES 5
 
 Sensor sensor(DHT_PIN, DHT_TYPE, SOIL_MOISTURE_PIN);
 Relay relay(RELAY_PIN);
@@ -23,32 +25,42 @@ UART uart(RX_PIN, TX_PIN);
 
 const unsigned long debounceDelay = 50;        // 50ms debounce delay
 const unsigned long timeWatering = 10 * 60000; // Thời gian tưới (10 phút)
-const int moistureThreshold = 600;              //Threshold
+const int moistureThreshold = 600;             // Threshold
 volatile bool buttonPressed = false;
 unsigned long lastDebounceTime = 0;
 unsigned long timeBeginWatering = 0;
-bool lastButtonState = HIGH; 
-bool isWatering = false;    
+bool lastButtonState = HIGH;
+bool isWatering = false;
 int dataShow = 0;
+float temperature = 0.0;
+float humidity = 0.0;
 JsonDocument doc;
 
 void handleButtonPress();
 void startWatering();
 void stopWatering();
+void sendData();
+void sendPumpStatus();
 
-void setup() {
-  Serial.begin(9600);
-  uart.begin(9600);
-  sensor.begin();
-  relay.begin();
-  lcd.setup();
+Ticker timerSendData(sendData, 60000, 0, MILLIS);
 
-  pinMode(BUTTON_PIN, INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(BUTTON_PIN), handleButtonPress, CHANGE);
+void setup()
+{
+    Serial.begin(9600);
+    uart.begin(9600);
+    sensor.begin();
+    relay.begin();
+    lcd.setup();
+    timerSendData.start();
+
+    pinMode(BUTTON_PIN, INPUT_PULLUP);
+    attachInterrupt(digitalPinToInterrupt(BUTTON_PIN), handleButtonPress, CHANGE);
 }
 
-void loop() {
-  String signal;
+void loop()
+{
+    timerSendData.update();
+    String signal;
     if (uart.receive(signal))
     {
         int control = signal.toInt();
@@ -64,8 +76,8 @@ void loop() {
     }
 
     sensor.readSensors();
-    float temperature = sensor.getTemperature();
-    float humidity = sensor.getHumidity();
+    temperature = sensor.getTemperature();
+    humidity = sensor.getHumidity();
     int soilMoisture = sensor.getSoilMoisture();
     dataShow = map(soilMoisture, 0, 1024, 0, 100);
 
@@ -77,15 +89,6 @@ void loop() {
     else
     {
         lcd.displayData(temperature, humidity, dataShow);
-
-        doc["temperature"] = temperature;
-        doc["humidity"] = humidity;
-        doc["soil_moisture"] = dataShow;
-        doc["relay_status"] = relay.getState();
-
-        char json[128];
-        serializeJson(doc, json);
-        uart.send(json);
     }
 
     if (soilMoisture > moistureThreshold && !isWatering)
@@ -93,14 +96,15 @@ void loop() {
         startWatering();
     }
 
+    sendPumpStatus();
+
     delay(1000);
 }
-
 
 void handleButtonPress()
 {
     unsigned long currentTime = millis();
-    bool buttonState = digitalRead(BUTTON_PIN); //Read status of button
+    bool buttonState = digitalRead(BUTTON_PIN); // Read status of button
 
     if (buttonState != lastButtonState && (currentTime - lastDebounceTime) > debounceDelay)
     {
@@ -129,4 +133,26 @@ void stopWatering()
     relay.setState(false);
     isWatering = false;
     Serial.println("Watering completed.");
+}
+
+void sendData()
+{
+    doc.clear();
+    doc["temperature"] = temperature;
+    doc["humidity"] = humidity;
+    doc["soil_moisture"] = dataShow;
+
+    char json[128];
+    serializeJson(doc, json);
+    uart.send(json);
+}
+
+void sendPumpStatus()
+{
+    doc.clear();
+    doc["relay_status"] = relay.getState();
+
+    char json[128];
+    serializeJson(doc, json);
+    uart.send(json);
 }
