@@ -1,14 +1,18 @@
 require('dotenv').config();
-const mongoose = require('mongoose');
+const http = require('http');
+const app = require('./src/app');
 const mqttService = require('./src/services/mqttService');
 const websocketService = require('./src/services/websocketService');
-const mongoConfig = require('./src/configs/mongoConfig');
+const mongoDB = require('./src/configs/mongoConfig');
 
-// Connect to MongoDB
-mongoose.connect(mongoConfig.uri)
-  .then(() => console.log('Connected to MongoDB'))
-  .catch(err => console.error('Error connecting to MongoDB:', err));
+mongoDB.connectDB();
 
-// Initialize MQTT and WebSocket services
+const server = http.createServer(app);
+
 mqttService.init();
 websocketService.init();
+
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
+});

@@ -42,3 +42,7 @@ exports.handlePumpControl = (action) => {
   mqttClient.publish('garden/user/control', payload);
   console.log(`Pump control sent with relayStatus: ${relayStatus}`);
 };
+
+exports.publish = (topic, payload) => {
+  mqttClient.publish(topic,payload);
+}

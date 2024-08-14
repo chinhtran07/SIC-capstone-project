@@ -9,7 +9,7 @@
   } from "react-native";
   import { styles } from "../../../Style/HomeStyle";
   import Header from "../../../components/Header/Header";
-  import ScheduledList from "../../../components/ScheduleIrrigation/ScheduleIrrigation";
+  import ThresholdEditor from "../../../components/ThresholdEditor/ThresholdEditor";
   import ChartModal from "../../../components/Modal/Chart/ChartModal";
 
   export default function HomePage() {
@@ -102,7 +102,7 @@
             />
           </View>
         </View>
-        <ScheduledList />
+        <ThresholdEditor />
         <ChartModal isVisible={isModalVisible} onClose={hideModal} />
       </SafeAreaView>
     );
