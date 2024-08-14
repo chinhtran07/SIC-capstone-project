@@ -42,7 +42,7 @@ void stopWatering();
 void sendData();
 void sendPumpStatus();
 
-Ticker timerSendData(sendData, 60000, 0, MILLIS);
+Ticker timerSendData(sendData, 10000, 0, MILLIS);
 
 void setup()
 {
