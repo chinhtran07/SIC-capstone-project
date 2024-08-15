@@ -8,6 +8,7 @@
 #include "Config.h"
 #include "Secret.h"
 #include "Control.h"
+#include "Threshold.h"
 
 class MQTTClient {
 private:
@@ -16,11 +17,12 @@ private:
     WiFiUDP wifiUdp;
     NTPClient timeClient;
     Control* controlStatus;
+    Threshold* threshold;
     void reconnect();
     void messageReceived(char* topic, byte* payload, unsigned int length);
 
 public:
-    MQTTClient(Control* cs);
+    MQTTClient(Control* cs, Threshold* thres);
     void setup();
     void loop();
     void publishMessage(const char* topic, String payload, boolean retained);

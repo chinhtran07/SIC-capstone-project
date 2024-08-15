@@ -3,8 +3,8 @@
 
 MQTTClient* globalMqttClient = nullptr;
 
-MQTTClient::MQTTClient(Control* cs) 
-    : client(espClient), timeClient(wifiUdp, 7 * 3600), controlStatus(cs) {
+MQTTClient::MQTTClient(Control* cs, Threshold* thres) 
+    : client(espClient), timeClient(wifiUdp, 7 * 3600), controlStatus(cs), threshold(thres) {
     globalMqttClient = this;
 }
 
@@ -61,9 +61,8 @@ void MQTTClient::messageReceived(char* topic, byte* payload, unsigned int length
     }
 
     if (strcmp(topic, TOPIC_LIMIT) == 0) {
-        String limitData;
-        serializeJson(doc, limitData);
-        // Handle limit data if needed
+        threshold->setThreshold(doc['humidity'], doc['temperature'], doc['soilMoisture']);
+        Serial.println("GOT IT");
     }
 }
 
