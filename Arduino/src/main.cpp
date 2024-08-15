@@ -23,51 +23,55 @@ UART uart(RX_PIN, TX_PIN);
 
 const unsigned long debounceDelay = 50;        // 50ms debounce delay
 const unsigned long timeWatering = 10 * 60000; // Thời gian tưới (10 phút)
-const int moistureThreshold = 600;              //Threshold
-volatile bool buttonPressed = false;
+const int moistureThreshold = 600;             // Threshold
+const unsigned long sendInterval = 60000;      // 1 phút
+
 unsigned long lastDebounceTime = 0;
 unsigned long timeBeginWatering = 0;
-bool lastButtonState = HIGH; 
-bool isWatering = false;    
-int dataShow = 0;
-JsonDocument doc;
+unsigned long lastSendTime = 0;
+bool lastButtonState = HIGH;
+bool isWatering = false;
 
 void handleButtonPress();
 void startWatering();
 void stopWatering();
+void sendData(float temperature, float humidity, int soilMoisture);
+void sendPumpStatus();
 
-void setup() {
-  Serial.begin(9600);
-  uart.begin(9600);
-  sensor.begin();
-  relay.begin();
-  lcd.setup();
+void setup()
+{
+    Serial.begin(9600);
+    uart.begin(9600);
+    sensor.begin();
+    relay.begin();
+    lcd.setup();
 
-  pinMode(BUTTON_PIN, INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(BUTTON_PIN), handleButtonPress, CHANGE);
+    pinMode(BUTTON_PIN, INPUT_PULLUP);
+    attachInterrupt(digitalPinToInterrupt(BUTTON_PIN), handleButtonPress, CHANGE);
 }
 
-void loop() {
-  String signal;
+void loop()
+{
+    String signal;
     if (uart.receive(signal))
     {
         int control = signal.toInt();
         relay.setState(control);
-        Serial.println(relay.getState() ? "ON" : "OFF");
         isWatering = control;
+        if (isWatering)
+            timeBeginWatering = millis();
     }
 
     if (isWatering && (millis() - timeBeginWatering >= timeWatering))
     {
         stopWatering();
-        return;
     }
 
     sensor.readSensors();
     float temperature = sensor.getTemperature();
     float humidity = sensor.getHumidity();
     int soilMoisture = sensor.getSoilMoisture();
-    dataShow = map(soilMoisture, 0, 1024, 0, 100);
+    int dataShow = map(soilMoisture, 0, 1024, 0, 100);
 
     if (isnan(temperature) || isnan(humidity))
     {
@@ -77,39 +81,30 @@ void loop() {
     else
     {
         lcd.displayData(temperature, humidity, dataShow);
-
-        doc["temperature"] = temperature;
-        doc["humidity"] = humidity;
-        doc["soil_moisture"] = dataShow;
-        doc["relay_status"] = relay.getState();
-
-        char json[128];
-        serializeJson(doc, json);
-        uart.send(json);
     }
 
-    if (soilMoisture > moistureThreshold && !isWatering)
+    if (millis() - lastSendTime >= sendInterval)
     {
-        startWatering();
+        sendData(temperature, humidity, dataShow);
+        lastSendTime = millis();
     }
 
     delay(1000);
 }
 
-
 void handleButtonPress()
 {
     unsigned long currentTime = millis();
-    bool buttonState = digitalRead(BUTTON_PIN); //Read status of button
+    bool buttonState = digitalRead(BUTTON_PIN);
 
     if (buttonState != lastButtonState && (currentTime - lastDebounceTime) > debounceDelay)
     {
         lastDebounceTime = currentTime;
-
         if (buttonState == LOW)
         {
             relay.toggle();
             isWatering = relay.getState();
+            sendPumpStatus();
         }
     }
 
@@ -122,6 +117,7 @@ void startWatering()
     timeBeginWatering = millis();
     isWatering = true;
     Serial.println("Watering started.");
+    sendPumpStatus();
 }
 
 void stopWatering()
@@ -129,4 +125,29 @@ void stopWatering()
     relay.setState(false);
     isWatering = false;
     Serial.println("Watering completed.");
+    sendPumpStatus();
+}
+
+void sendData(float temperature, float humidity, int soilMoisture)
+{
+    JsonDocument docData;
+    docData["message"] = 1;
+    docData["temperature"] = temperature;
+    docData["humidity"] = humidity;
+    docData["soil_moisture"] = soilMoisture;
+
+    char json[128];
+    serializeJson(docData, json);
+    uart.send(json);
+}
+
+void sendPumpStatus()
+{
+    JsonDocument docStatus;
+    docStatus["relay_status"] = relay.getState();
+    Serial.print(relay.getState());
+
+    char json[64];
+    serializeJson(docStatus, json);
+    uart.send(json);
 }
