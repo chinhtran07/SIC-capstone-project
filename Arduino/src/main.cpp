@@ -83,11 +83,6 @@ void loop()
         lcd.displayData(temperature, humidity, dataShow);
     }
 
-    if (soilMoisture > moistureThreshold && !isWatering)
-    {
-        startWatering();
-    }
-
     if (millis() - lastSendTime >= sendInterval)
     {
         sendData(temperature, humidity, dataShow);
