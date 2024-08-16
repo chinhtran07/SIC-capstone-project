@@ -23,12 +23,9 @@ UART uart(RX_PIN, TX_PIN);
 
 const unsigned long debounceDelay = 50;        // 50ms debounce delay
 const unsigned long timeWatering = 10 * 60000; // Thời gian tưới (10 phút)
-const int moistureThreshold = 600;             // Threshold
-const unsigned long sendInterval = 60000;      // 1 phút
 
 unsigned long lastDebounceTime = 0;
 unsigned long timeBeginWatering = 0;
-unsigned long lastSendTime = 0;
 bool lastButtonState = HIGH;
 bool isWatering = false;
 
@@ -71,7 +68,7 @@ void loop()
     float temperature = sensor.getTemperature();
     float humidity = sensor.getHumidity();
     int soilMoisture = sensor.getSoilMoisture();
-    int dataShow = map(soilMoisture, 0, 1024, 0, 100);
+    int dataShow = map(soilMoisture, 0, 1024, 100, 0);
 
     if (isnan(temperature) || isnan(humidity))
     {
@@ -83,11 +80,7 @@ void loop()
         lcd.displayData(temperature, humidity, dataShow);
     }
 
-    if (millis() - lastSendTime >= sendInterval)
-    {
-        sendData(temperature, humidity, dataShow);
-        lastSendTime = millis();
-    }
+    sendData(temperature, humidity, dataShow);
 
     delay(1000);
 }
@@ -111,14 +104,6 @@ void handleButtonPress()
     lastButtonState = buttonState;
 }
 
-void startWatering()
-{
-    relay.setState(true);
-    timeBeginWatering = millis();
-    isWatering = true;
-    Serial.println("Watering started.");
-    sendPumpStatus();
-}
 
 void stopWatering()
 {

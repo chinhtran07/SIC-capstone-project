@@ -1,24 +1,28 @@
 #include "SensorData.h"
+#include "SerialManager.cpp"
 
-SensorData::SensorData(MQTTClient *client, Control *cs, Threshold* th)
-    : serial(D1, D2),
-      mqttClient(client),
+SensorData::SensorData(MQTTClient *client, Control *cs, Threshold *th)
+    : mqttClient(client),
       threshold(th),
       control(cs),
       humidity(0.0),
       temperature(0.0),
       soilMoisture(0),
-      lastPublishedStatus(false)
+      lastControlStatus(false),
+      lastTime(0)
+
 {
 }
 
 void SensorData::setup()
 {
+    SoftwareSerial &serial = SerialManager::getInstance();
     serial.begin(9600);
 }
 
 bool SensorData::readDataFromUART()
 {
+    SoftwareSerial &serial = SerialManager::getInstance();
     if (serial.available())
     {
         boolean message;
@@ -33,8 +37,10 @@ bool SensorData::readDataFromUART()
                 humidity = doc["humidity"];
                 temperature = doc["temperature"];
                 soilMoisture = doc["soil_moisture"];
-                if (threshold->isOverThreshold(humidity, temperature, soilMoisture))
-                    control->setStatus(true, "At UART");
+                if (threshold->isOverThreshold(humidity, temperature, soilMoisture)) {
+                    control->setStatus(true, "IsOverUART");
+                    serial.println(control->getStatus());
+                }
             }
             else
             {
@@ -54,14 +60,18 @@ void SensorData::readAndPublish()
 {
     if (readDataFromUART())
     {
-        publishSensorData();
+        if (millis() - lastTime >= interval) {
+            publishSensorData();
+            lastTime = millis();
+        }
         publishControlStatus();
     }
 }
 
 void SensorData::publishSensorData()
 {
-    if (!humidity) {
+    if (!humidity)
+    {
         return;
     }
     JsonDocument doc;
@@ -77,17 +87,16 @@ void SensorData::publishSensorData()
 void SensorData::publishControlStatus()
 {
     bool currentStatus = control->getStatus();
-    if (currentStatus != lastPublishedStatus || control->hasChanged())
-    {
-        JsonDocument doc;
-        String payload;
+    if (currentStatus != lastControlStatus || control->hasChanged()) {
+    JsonDocument doc;
+    String payload;
 
-        doc["relayStatus"] = currentStatus;
-        serializeJson(doc, payload);
-        mqttClient->publishMessage(TOPIC_CONTROL, payload, true);
+    doc["relayStatus"] = currentStatus;
+    lastControlStatus = currentStatus;
+    serializeJson(doc, payload);
+    mqttClient->publishMessage(TOPIC_CONTROL, payload, true);
 
-        Serial.println(currentStatus ? "ON" : "OFF");
-        lastPublishedStatus = currentStatus;
-        control->acknowledgeChange();
+    Serial.println(currentStatus ? "ON" : "OFF");
+    control->acknowledgeChange();
     }
 }

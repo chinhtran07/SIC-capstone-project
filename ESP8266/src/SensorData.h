@@ -8,13 +8,14 @@
 
 class SensorData {
 private:
-    SoftwareSerial serial;
     float humidity, temperature;
     int soilMoisture;
     MQTTClient* mqttClient;
     Control* control;
     Threshold* threshold;
-    bool lastPublishedStatus;
+    bool lastControlStatus;
+    unsigned long lastTime;
+    unsigned long interval = 60000;
 
     bool readDataFromUART();
     void publishSensorData();

@@ -27,6 +27,7 @@
     "react-native-modal-datetime-picker": "^17.1.0",
     "react-native-mqtt": "^0.1.0-beta4",
     "react-native-paho-mqtt": "^0.1.1",
+    "react-native-vector-icons": "^10.1.0",
     "react-native-web": "~0.19.10"
   },
   "devDependencies": {
