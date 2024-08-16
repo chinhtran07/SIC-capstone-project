@@ -1,8 +1,9 @@
 #include "SensorData.h"
 
-SensorData::SensorData(MQTTClient *client, Control *cs)
+SensorData::SensorData(MQTTClient *client, Control *cs, Threshold* th)
     : serial(D1, D2),
       mqttClient(client),
+      threshold(th),
       control(cs),
       humidity(0.0),
       temperature(0.0),
@@ -32,6 +33,8 @@ bool SensorData::readDataFromUART()
                 humidity = doc["humidity"];
                 temperature = doc["temperature"];
                 soilMoisture = doc["soil_moisture"];
+                if (threshold->isOverThreshold(humidity, temperature, soilMoisture))
+                    control->setStatus(true, "At UART");
             }
             else
             {
