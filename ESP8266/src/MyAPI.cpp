@@ -1,11 +1,11 @@
 #include "MyAPI.h"
 
-MyAPI::MyAPI(String serverUrl, WiFiClient client) : client(client)
+MyAPI::MyAPI(String serverUrl)
 {
     _serverUrl = serverUrl;
 }
 
-void MyAPI::get(const char *endpoint, void (*callback)(String))
+void MyAPI::get(const char *endpoint, WiFiClient& client ,void (*callback)(String))
 {
     HTTPClient http;
     String url = String(_serverUrl) + String(endpoint);
@@ -15,6 +15,10 @@ void MyAPI::get(const char *endpoint, void (*callback)(String))
     {
         http.addHeader("Content-Type", "application/json");
         http.addHeader("Custom-Header", _headers);
+    }
+    else
+    {
+        http.addHeader("Content-Type", "application/json");
     }
     int httpResponseCode = http.GET();
     String response = "";
@@ -37,35 +41,39 @@ void MyAPI::get(const char *endpoint, void (*callback)(String))
     }
 }
 
-void MyAPI::post(const char *endpoint, const String &payload, void (*callback)(String))
+void MyAPI::post(const char *endpoint, WiFiClient& client ,const String &payload, void (*callback)(String))
 {
-        HTTPClient http;
-        String url = String(_serverUrl) + String(endpoint);
-        http.begin(client ,url.c_str());
-        if (_headers.length() > 0)
-        {
-            http.addHeader("Content-Type", "application/json");
-            http.addHeader("Custom-Header", _headers);
-        }
-        int httpResponseCode = http.POST(payload);
-        String response = "";
+    HTTPClient http;
+    String url = String(_serverUrl) + String(endpoint);
+    http.begin(client, url.c_str());
+    if (_headers.length() > 0)
+    {
+        http.addHeader("Content-Type", "application/json");
+        http.addHeader("Custom-Header", _headers);
+    }
+    else
+    {
+        http.addHeader("Content-Type", "application/json");
+    }
+    int httpResponseCode = http.POST(payload);
+    String response = "";
 
-        if (httpResponseCode > 0)
-        {
-            response = http.getString();
-        }
-        else
-        {
-            Serial.print("Error on HTTP request: ");
-            Serial.println(httpResponseCode);
-        }
-        http.end();
+    if (httpResponseCode > 0)
+    {
+        response = http.getString();
+    }
+    else
+    {
+        Serial.print("Error on HTTP request: ");
+        Serial.println(httpResponseCode);
+    }
+    http.end();
 
-        // Gọi hàm callback với dữ liệu trả về
-        if (callback != nullptr)
-        {
-            callback(response);
-        }
+    // Gọi hàm callback với dữ liệu trả về
+    if (callback != nullptr)
+    {
+        callback(response);
+    }
 }
 
 void MyAPI::setHeaders(const String &headers)
@@ -73,10 +81,12 @@ void MyAPI::setHeaders(const String &headers)
     _headers = headers;
 }
 
-void MyAPI::parseJson(String response, JsonDocument &doc) {
+void MyAPI::parseJson(String response, JsonDocument &doc)
+{
     DeserializationError error = deserializeJson(doc, response);
-      if (error) {
+    if (error)
+    {
         Serial.print(F("deserializeJson() failed: "));
         Serial.println(error.f_str());
-      }
+    }
 }

@@ -7,16 +7,15 @@
 
 class MyAPI {
 public:
-    MyAPI(String serverUrl, WiFiClient client);
-    void get(const char* endpoint, void (*callback)(String));
-    void post(const char* endpoint, const String& payload, void (*callback)(String));
+    MyAPI(String serverUrl);
+    void get(const char* endpoint, WiFiClient& client,void (*callback)(String));
+    void post(const char* endpoint, WiFiClient& client ,const String& payload, void (*callback)(String));
     void setHeaders(const String& headers);
     void parseJson(String response, JsonDocument &doc);
 
 private:
     String _serverUrl;
     String _headers;
-    WiFiClient client;
 };
 
 #endif
