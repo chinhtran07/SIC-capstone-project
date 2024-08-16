@@ -4,7 +4,7 @@
 #define TOPIC_CONTROL "garden/plant/control"
 #define TOPIC_USER_CONTROL "garden/user/control"
 #define TOPIC_METRICS "garden/plant/metrics"
-#define TOPIC_LIMIT "garden/plant/limit"
+#define TOPIC_LIMIT "garden/plant/threshold"
 
 // Add other configuration constants here
 

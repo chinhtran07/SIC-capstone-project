@@ -5,9 +5,11 @@
 #include "Control.h"
 #include "Threshold.h"
 #include "MyAPI.h"
+#include <SoftwareSerial.h>
 
 const String url = "http://192.168.2.14:3000/api";
 
+SoftwareSerial serial(D1, D2);
 WiFiClient client;
 WiFiSetup wifiSetup;
 Control controlStatus;

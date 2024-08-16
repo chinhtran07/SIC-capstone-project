@@ -37,7 +37,9 @@
         if (data.soilMoisture !== undefined) {
           setSoilMoisture(data.soilMoisture);
         }
-        
+        if (data.relayStatus !== undefined) {
+          setIsPumpOn(data.relayStatus);
+        }
       };
 
       ws.onclose = () => {
