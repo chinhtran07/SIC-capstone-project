@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const HOST = "192.168.2.151";
+const HOST = "192.168.2.14";
 const portWS = 8080;
 const portAPI = 3000;
 
