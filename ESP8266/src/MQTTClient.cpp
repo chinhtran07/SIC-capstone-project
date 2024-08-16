@@ -1,11 +1,11 @@
 #include "MQTTClient.h"
 #include <ArduinoJson.h>
-#include <SoftwareSerial.h>
+#include <SerialManager.cpp>
 
 MQTTClient* globalMqttClient = nullptr;
 
 MQTTClient::MQTTClient(Control* cs, Threshold* thres) 
-    : client(espClient), timeClient(wifiUdp, 7 * 3600), controlStatus(cs), threshold(thres) {
+    : client(espClient), timeClient(wifiUdp, 7 * 3600), controlStatus(cs), threshold(thres){
     globalMqttClient = this;
 }
 
@@ -21,6 +21,9 @@ void MQTTClient::setup() {
         this->messageReceived(topic, payload, length);
     });
     reconnect();
+
+    SoftwareSerial &serial = SerialManager::getInstance();
+    serial.begin(9600);
 }
 
 void MQTTClient::loop() {
@@ -56,12 +59,13 @@ void MQTTClient::messageReceived(char* topic, byte* payload, unsigned int length
     }
 
     if (strcmp(topic, TOPIC_USER_CONTROL) == 0) {
-        SoftwareSerial serial(D1, D2);
-        serial.begin(9600);
+        SoftwareSerial &serial = SerialManager::getInstance();
         bool newStatus = doc["relayStatus"];
         controlStatus->setStatus(newStatus, "At MQTT");
+        controlStatus->acknowledgeChange();
         serial.println(newStatus);
         Serial.println(newStatus ? "RELAY ON" : "RELAY OFF");
+        serial.println(newStatus);
     }
 
     if (strcmp(topic, TOPIC_LIMIT) == 0) {

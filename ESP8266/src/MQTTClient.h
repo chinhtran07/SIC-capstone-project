@@ -9,10 +9,12 @@
 #include "Secret.h"
 #include "Control.h"
 #include "Threshold.h"
+#include <SoftwareSerial.h>
 
 class MQTTClient {
 private:
     WiFiClientSecure espClient;
+    SoftwareSerial serial;
     PubSubClient client;
     WiFiUDP wifiUdp;
     NTPClient timeClient;
