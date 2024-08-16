@@ -19,7 +19,7 @@
     const [temperature, setTemperature] = useState(0.0);
     const [soilMoisture, setSoilMoisture] = useState(0);
 
-    const ws = new WebSocket('ws://192.168.2.14:8080');
+    const ws = new WebSocket('ws://192.168.2.151:8080');
 
     useEffect(() => {
       ws.onopen = () => {

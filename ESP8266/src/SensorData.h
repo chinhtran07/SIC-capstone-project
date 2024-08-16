@@ -13,13 +13,14 @@ private:
     int soilMoisture;
     MQTTClient* mqttClient;
     Control* control;
+    Threshold* threshold;
     bool lastPublishedStatus;
 
     bool readDataFromUART();
     void publishSensorData();
     void publishControlStatus();
 public:
-    SensorData(MQTTClient* client, Control* cs);
+    SensorData(MQTTClient* client, Control* cs, Threshold* threshold);
     void setup();
     void readAndPublish();
 };

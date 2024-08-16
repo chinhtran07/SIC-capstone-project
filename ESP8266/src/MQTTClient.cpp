@@ -1,5 +1,6 @@
 #include "MQTTClient.h"
 #include <ArduinoJson.h>
+#include <SoftwareSerial.h>
 
 MQTTClient* globalMqttClient = nullptr;
 
@@ -55,14 +56,18 @@ void MQTTClient::messageReceived(char* topic, byte* payload, unsigned int length
     }
 
     if (strcmp(topic, TOPIC_USER_CONTROL) == 0) {
+        SoftwareSerial serial(D1, D2);
+        serial.begin(9600);
         bool newStatus = doc["relayStatus"];
         controlStatus->setStatus(newStatus, "At MQTT");
+        serial.println(newStatus);
         Serial.println(newStatus ? "RELAY ON" : "RELAY OFF");
     }
 
     if (strcmp(topic, TOPIC_LIMIT) == 0) {
-        threshold->setThreshold(doc['humidity'], doc['temperature'], doc['soilMoisture']);
-        Serial.println("GOT IT");
+        threshold->setThreshold(doc["humidity"], doc["temperature"], doc["soilMoisture"]);
+        float test = doc["humidity"];
+        Serial.println(test);
     }
 }
 

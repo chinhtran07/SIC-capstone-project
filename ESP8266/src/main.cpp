@@ -14,7 +14,7 @@ Control controlStatus;
 Threshold threshold;
 MyAPI myAPI(url);
 MQTTClient mqttClient(&controlStatus, &threshold);
-SensorData sensorData(&mqttClient, &controlStatus);
+SensorData sensorData(&mqttClient, &controlStatus, &threshold);
 
 void handleThreshold(String response);
 void getThreshold();
@@ -47,7 +47,6 @@ void loop()
 {
   mqttClient.loop();
   sensorData.readAndPublish();
-  threshold.isOverThreshold();
 }
 
 void handleThreshold(String response)
