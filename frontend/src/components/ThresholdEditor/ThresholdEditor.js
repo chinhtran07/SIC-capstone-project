@@ -115,7 +115,7 @@ export default function ThresholdEditor() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.thresholdBox}>
-        <Text style={styles.title}>Chỉnh sửa Threshold:</Text>
+        <Text style={styles.title}>Chỉnh sửa ngưỡng:</Text>
 
         {/* Temperature Control */}
         <Text style={styles.label}>Nhiệt độ: {temperature}°C</Text>
@@ -151,7 +151,7 @@ export default function ThresholdEditor() {
         </View>
 
         <TouchableOpacity style={styles.submitButton} onPress={validateAndSubmit}>
-          <Text style={styles.submitButtonText}>Cập nhật Threshold</Text>
+          <Text style={styles.submitButtonText}>Cập nhật ngưỡng</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>

@@ -4,7 +4,7 @@ import Feather from "@expo/vector-icons/Feather";
 import { Dropdown } from "react-native-element-dropdown";
 
 export default function Header() {
-  const [selectedValue, setSelectedValue] = useState(null);
+  const [selectedValue, setSelectedValue] = useState({ label: "Vườn 1", value: "garden1" });
 
   const data = [
     { label: "Vườn 1", value: "garden1" },
