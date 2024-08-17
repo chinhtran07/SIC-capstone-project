@@ -19,7 +19,6 @@ MQTTClient mqttClient(&controlStatus, &threshold);
 SensorData sensorData(&mqttClient, &controlStatus, &threshold);
 
 void handleThreshold(String response);
-void getThreshold();
 
 void setup()
 {

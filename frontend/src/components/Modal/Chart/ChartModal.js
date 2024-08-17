@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   View,
   Modal,
@@ -7,26 +7,62 @@ import {
   Button,
   Dimensions,
   SafeAreaView,
+  ScrollView, // Import ScrollView
 } from "react-native";
 import { LineChart } from "react-native-gifted-charts";
+import { apiClient, endpoints } from "../../../config/apis";
 
 const ChartModal = ({ isVisible, onClose }) => {
   const [temperatureData, setTemperatureData] = useState([]);
   const [humidityData, setHumidityData] = useState([]);
   const [soilMoistureData, setSoilMoistureData] = useState([]);
 
+  const ws = useRef(null);
   const screenWidth = Dimensions.get("window").width;
   const screenHeight = Dimensions.get("window").height;
 
-  // Create WebSocket instance and connect
-  const ws = new WebSocket('ws://192.168.2.151:8080'); // Replace with your WebSocket server URL
+  useEffect(() => {
+    const fetchDataToday = async () => {
+      try {
+        const response = await apiClient.get(endpoints['getDataToday']);
+        if (response.status === 200) {
+          const data = response.data.results;
+
+          const formattedTemperatureData = data.map(item => ({
+            value: item.temperature,
+            label: new Date(item.timestamp).toLocaleTimeString().slice(0, 5) // Format time
+          }));
+
+          const formattedHumidityData = data.map(item => ({
+            value: item.humidity,
+            label: new Date(item.timestamp).toLocaleTimeString().slice(0, 5) // Format time
+          }));
+
+          const formattedSoilMoistureData = data.map(item => ({
+            value: item.soilMoisture,
+            label: new Date(item.timestamp).toLocaleTimeString().slice(0, 5) // Format time
+          }));
+
+          setTemperatureData(formattedTemperatureData);
+          setHumidityData(formattedHumidityData);
+          setSoilMoistureData(formattedSoilMoistureData);
+        }
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      }
+    };
+
+    fetchDataToday();
+  }, []);
 
   useEffect(() => {
-    ws.onopen = () => {
+    ws.current = new WebSocket('ws://192.168.2.151:8080');
+
+    ws.current.onopen = () => {
       console.log('Connected to WebSocket server');
     };
 
-    ws.onmessage = (event) => {
+    ws.current.onmessage = (event) => {
       const data = JSON.parse(event.data);
       console.log(data);
 
@@ -50,12 +86,12 @@ const ChartModal = ({ isVisible, onClose }) => {
       }
     };
 
-    ws.onclose = () => {
+    ws.current.onclose = () => {
       console.log('Disconnected from WebSocket server');
     };
 
     return () => {
-      ws.close();
+      ws.current.close();
     };
   }, []);
 
@@ -67,15 +103,15 @@ const ChartModal = ({ isVisible, onClose }) => {
       onRequestClose={onClose}
     >
       <SafeAreaView style={styles.modalBackground}>
-        <View style={[styles.modalContainer, { height: screenHeight - 100 }]}>
+        <ScrollView contentContainerStyle={styles.modalContainer}>
           <LineChart
             data={temperatureData}
-            width={screenWidth - 40}
-            height={150}
+            width={screenWidth - 20}
+            height={200}
             isAnimated
             showVerticalLines={false}
-            xAxisLabelStyle={{ color: "#000" }}
-            yAxisLabelStyle={{ color: "#000" }}
+            xAxisLabelStyle={styles.axisLabel}
+            yAxisLabelStyle={styles.axisLabel}
             color="#ff5733"
             style={styles.chart}
           />
@@ -83,12 +119,12 @@ const ChartModal = ({ isVisible, onClose }) => {
 
           <LineChart
             data={humidityData}
-            width={screenWidth - 40}
-            height={150}
+            width={screenWidth - 20}
+            height={200}
             isAnimated
             showVerticalLines={false}
-            xAxisLabelStyle={{ color: "#000" }}
-            yAxisLabelStyle={{ color: "#000" }}
+            xAxisLabelStyle={styles.axisLabel}
+            yAxisLabelStyle={styles.axisLabel}
             color="#33c1ff"
             style={styles.chart}
           />
@@ -96,19 +132,19 @@ const ChartModal = ({ isVisible, onClose }) => {
 
           <LineChart
             data={soilMoistureData}
-            width={screenWidth - 40}
-            height={150}
+            width={screenWidth - 20}
+            height={200}
             isAnimated
             showVerticalLines={false}
-            xAxisLabelStyle={{ color: "#000" }}
-            yAxisLabelStyle={{ color: "#000" }}
+            xAxisLabelStyle={styles.axisLabel}
+            yAxisLabelStyle={styles.axisLabel}
             color="#4caf50"
             style={styles.chart}
           />
           <Text style={styles.chartTitle}>Biểu đồ độ ẩm đất</Text>
 
-          <Button title="Close" onPress={onClose} />
-        </View>
+          <Button title="Close" onPress={onClose} color="#ff0000" />
+        </ScrollView>
       </SafeAreaView>
     </Modal>
   );
@@ -117,14 +153,15 @@ const ChartModal = ({ isVisible, onClose }) => {
 const styles = StyleSheet.create({
   modalBackground: {
     flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff', // Semi-transparent background
   },
   modalContainer: {
     width: "100%",
-    backgroundColor: "#fff",
-    borderRadius: 10,
-    padding: 20,
+    padding: 10,
     alignItems: "center",
-    maxHeight: "100%",
+    // Removed fixed height, let ScrollView handle content overflow
   },
   chart: {
     marginVertical: 10,
@@ -132,9 +169,12 @@ const styles = StyleSheet.create({
   chartTitle: {
     fontSize: 18,
     fontWeight: "bold",
-    textAlign: "left",
+    textAlign: "center",
     marginBottom: 5,
     color: "#333",
+  },
+  axisLabel: {
+    color: "#000",
   },
 });
 

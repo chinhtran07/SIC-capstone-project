@@ -12,6 +12,9 @@ import Header from "../../../components/Header/Header";
 import ThresholdEditor from "../../../components/ThresholdEditor/ThresholdEditor";
 import ChartModal from "../../../components/Modal/Chart/ChartModal";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
+import { apiClient, endpoints } from "../../../config/apis";
+
+const WS_URL = 'ws://192.168.2.151:8080';
 
 export default function HomePage() {
   const [isPumpOn, setIsPumpOn] = useState(false);
@@ -19,36 +22,60 @@ export default function HomePage() {
   const [humidity, setHumidity] = useState(0.0);
   const [temperature, setTemperature] = useState(0.0);
   const [soilMoisture, setSoilMoisture] = useState(0);
-
-  const ws = new WebSocket('ws://192.168.2.151:8080');
+  const [ws, setWs] = useState(null);
 
   useEffect(() => {
-    ws.onopen = () => {
+    const fetchLatestData = async () => {
+      try {
+        const response = await apiClient.get(endpoints['getLatestData']);
+        if (response.status === 200) {
+          const data = response.data;
+          setTemperature(data.temperature || 0);
+          setHumidity(data.humidity || 0);
+          setSoilMoisture(data.soilMoisture || 0);
+        }
+      } catch (error) {
+        console.error("Error fetching latest data:", error);
+      }
+    };
+
+    fetchLatestData();
+  }, []);
+
+  useEffect(() => {
+    const websocket = new WebSocket(WS_URL);
+    setWs(websocket);
+
+    websocket.onopen = () => {
       console.log('Connected to WebSocket server');
     };
 
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      if (data.temperature !== undefined) {
-        setTemperature(parseFloat(data.temperature.toFixed(2)));
-      }
-      if (data.humidity !== undefined) {
-        setHumidity(parseFloat(data.humidity.toFixed(2)));
-      }
-      if (data.soilMoisture !== undefined) {
-        setSoilMoisture(data.soilMoisture);
-      }
-      if (data.relayStatus !== undefined) {
-        setIsPumpOn(data.relayStatus);
+    websocket.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.temperature !== undefined) {
+          setTemperature(parseFloat(data.temperature.toFixed(2)));
+        }
+        if (data.humidity !== undefined) {
+          setHumidity(parseFloat(data.humidity.toFixed(2)));
+        }
+        if (data.soilMoisture !== undefined) {
+          setSoilMoisture(data.soilMoisture);
+        }
+        if (data.relayStatus !== undefined) {
+          setIsPumpOn(data.relayStatus);
+        }
+      } catch (error) {
+        console.error("Error parsing WebSocket message:", error);
       }
     };
 
-    ws.onclose = () => {
+    websocket.onclose = () => {
       console.log('Disconnected from WebSocket server');
     };
 
     return () => {
-      ws.close();
+      websocket.close();
     };
   }, []);
 
@@ -56,7 +83,7 @@ export default function HomePage() {
     const newPumpStatus = !isPumpOn;
     setIsPumpOn(newPumpStatus);
 
-    if (ws.readyState === WebSocket.OPEN) {
+    if (ws && ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({
         type: 'control',
         device: 'pump',
@@ -75,29 +102,23 @@ export default function HomePage() {
       <Header />
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.infoBox}>
-          <View style={styles.infoItem}>
-            <Icon name="thermometer" size={28} color="#4CAF50" style={styles.icon} />
-            <View style={styles.textContainer}>
-              <Text style={styles.infoLabel}>Nhiệt độ</Text>
-              <Text style={styles.infoValue}>{temperature} °C</Text>
-            </View>
-          </View>
+          <InfoItem
+            icon="thermometer"
+            label="Nhiệt độ"
+            value={`${temperature} °C`}
+          />
           <View style={styles.divider} />
-          <View style={styles.infoItem}>
-            <Icon name="water-percent" size={28} color="#4CAF50" style={styles.icon} />
-            <View style={styles.textContainer}>
-              <Text style={styles.infoLabel}>Độ ẩm</Text>
-              <Text style={styles.infoValue}>{humidity} %</Text>
-            </View>
-          </View>
+          <InfoItem
+            icon="water-percent"
+            label="Độ ẩm"
+            value={`${humidity} %`}
+          />
           <View style={styles.divider} />
-          <View style={styles.infoItem}>
-            <Icon name="water" size={28} color="#4CAF50" style={styles.icon} />
-            <View style={styles.textContainer}>
-              <Text style={styles.infoLabel}>Độ ẩm đất</Text>
-              <Text style={styles.infoValue}>{soilMoisture} %</Text>
-            </View>
-          </View>
+          <InfoItem
+            icon="water"
+            label="Độ ẩm đất"
+            value={`${soilMoisture} %`}
+          />
         </View>
         <TouchableOpacity style={styles.button} onPress={showModal}>
           <Text style={styles.buttonText}>Xem biểu đồ</Text>
@@ -118,6 +139,16 @@ export default function HomePage() {
   );
 }
 
+const InfoItem = ({ icon, label, value }) => (
+  <View style={styles.infoItem}>
+    <Icon name={icon} size={28} color="#4CAF50" style={styles.icon} />
+    <View style={styles.textContainer}>
+      <Text style={styles.infoLabel}>{label}</Text>
+      <Text style={styles.infoValue}>{value}</Text>
+    </View>
+  </View>
+);
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -125,7 +156,7 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     flexGrow: 1,
-    paddingBottom: 20, // Ensure there's space at the bottom for scrolling
+    paddingBottom: 20,
   },
   infoBox: {
     marginVertical: 20,
@@ -138,7 +169,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    marginHorizontal: 10, // Ensure margin on both sides
+    marginHorizontal: 10,
   },
   infoItem: {
     flexDirection: "row",

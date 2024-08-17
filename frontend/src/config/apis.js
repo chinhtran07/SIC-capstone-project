@@ -9,7 +9,9 @@ const API_URL = `http://${HOST}:${portAPI}/api`;
 
 export const endpoints = {
     "update": "/threshold",
-    "get": "/threshold"
+    "get": "/threshold",
+    "getLatestData": "/sensor-data/get-latest-data",
+    "getDataToday": "/sensor-data/get-data-today"
 }
 
 const apiClient = axios.create({
